@@ -4,7 +4,7 @@ This repo hosts my B.Tech project: a hybrid CNN-Swin Transformer for melanoma cl
 The google drive link for both model files:-https://drive.google.com/drive/folders/1sS_XebhYvEe6nsGjCeqi10Pf3UrNYIfP?usp=sharing
 
 model pipeline:-
-
+```text   
 INPUT IMAGE (224×224×3)
 │
 ┌────────────┴────────────┐
