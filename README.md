@@ -1,7 +1,7 @@
 # Hybrid-CNN-Swin-Skin-Cancer
 This repo hosts my B.Tech project: a hybrid CNN-Swin Transformer for melanoma classification. Fusing EfficientNetV2/ConvNeXtV2 with a custom Swin block, it hit 71%+ zero-shot accuracy on the unseen ISIC dataset after training on HAM10000. This proves true Out-Of-Distribution (OOD) generalization for real-world clinical environments.
 
-The google drive link for both model files:-https://drive.google.com/drive/folders/1sS_XebhYvEe6nsGjCeqi10Pf3UrNYIfP?usp=sharing
+The google drive link for both model ph files:-https://drive.google.com/drive/folders/1sS_XebhYvEe6nsGjCeqi10Pf3UrNYIfP?usp=sharing
 Code if github fails to load notebook-https://nbviewer.org/github/ivv100/Hybrid-CNN-Swin-Skin-Cancer/blob/main/notebooka37728aa29.ipynb    
                                     -https://nbviewer.org/github/ivv100/Hybrid-CNN-Swin-Skin-Cancer/blob/main/fork-of-notebook90929927d6.ipynb
 
