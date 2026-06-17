@@ -1,110 +1,62 @@
 # Hybrid-CNN-Swin-Skin-Cancer
-This repo hosts my B.Tech project: a hybrid CNN-Swin Transformer for melanoma classification. Fusing EfficientNetV2/ConvNeXtV2 with a custom Swin block, it hit 71%+ zero-shot accuracy on the unseen ISIC dataset after training on HAM10000. This proves true Out-Of-Distribution (OOD) generalization for real-world clinical environments.
-
-The google drive link for both model ph files:-https://drive.google.com/drive/folders/1sS_XebhYvEe6nsGjCeqi10Pf3UrNYIfP?usp=sharing
-Code if github fails to load notebook-
+ This repository hosts the final audited implementation of our 6-Pillar Heterogeneous Fusion Engine for highly robust skin lesion and melanoma classification. By unifying latent feature representations from four state-of-the-art vision backbones, a simulated multi-scale UNet skip architecture, and processed clinical patient metadata, the network maps an optimized, multi-modal unified vector space of $5760$ dimensions.Equipped with Asymmetric Focal Loss, Weight EMA, and Monte Carlo (MC) Dropout soft-label generation, this architecture resolves complex feature alignment issues and achieves an 82%+ Macro F1-score across highly unbalanced diagnostic distributions.
 
 
 model pipeline:-
-```text   
-INPUT IMAGE (224×224×3)
-│
-┌────────────┴────────────┐
-│                         │
-▼                         ▼
-┌─────────────────────┐   ┌─────────────────────┐
-│  EfficientNetV2-S   │   │   ConvNeXtV2-Base   │
-│ (HAM10k pretrained) │   │ (HAM10k pretrained) │
-│  Fine-tuned ISIC    │   │  Fine-tuned ISIC    │
-└─────────────────────┘   └─────────────────────┘
-│                         │
-▼                         ▼
-Feature Map 7×7×1280      Feature Map 7×7×1024
-│                         │
-▼                         ▼
-┌─────────────────────┐   ┌─────────────────────┐
-│  1×1 Conv Project   │   │  1×1 Conv Project   │
-│     1280 → 512      │   │     1024 → 512      │
-└─────────────────────┘   └─────────────────────┘
-│                         │
-▼                         ▼
-Flatten 7×7×512 →         Flatten 7×7×512 →
-49 tokens × 512           49 tokens × 512
-│                         │
-└────────────┬────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │    Token Concat     │
-   │    [49+49] = 98     │
-   │    tokens × 512     │
-   └─────────────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │ Positional Encoding │
-   │ (learnable 98×512)  │
-   └─────────────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │  Swin Transformer   │
-   │    Fusion Stage     │
-   │                     │
-   │  ┌───────────────┐  │
-   │  │  Window Attn  │  │
-   │  │    Block 1    │  │
-   │  └───────────────┘  │
-   │          │          │
-   │  ┌───────────────┐  │
-   │  │ Shifted Window│  │
-   │  │  Attn Block 2 │  │
-   │  └───────────────┘  │
-   │          │          │
-   │  ┌───────────────┐  │
-   │  │ MLP + LayerNorm│ │
-   │  └───────────────┘  │
-   └─────────────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │   Global Avg Pool   │
-   │    98×512 → 512     │
-   └─────────────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │    Dropout (0.3)    │
-   └─────────────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │      MLP Head       │
-   │    512 → 256 → 7    │
-   │   GELU + Dropout    │
-   └─────────────────────┘
-             │
-             ▼
-   ┌─────────────────────┐
-   │   Softmax Output    │
-   │    7 Skin Cancer    │
-   │       Classes       │
-   └─────────────────────┘
-
-
-Progress:-`
-
-- [x] **Phase 1: Feature Extraction SOTA**
-  - [x] Train EfficientNetV2-S on HAM10000.
-  - [x] Train ConvNeXtV2-Base on HAM10000.
-  - [x] Blind evaluation on ISIC dataset (Achieved >71% Zero-Shot OOD).
-- [ ] **Phase 2: Transformer Fusion Head**
-  - [ ] Implement 1x1 Conv projection (reduce dimensions to 512).
-  - [ ] Engineer Token Concatenation Block [49 + 49 = 98 tokens].
-  - [ ] Apply Learnable Positional Encodings.
-  - [ ] Build Swin Transformer Window Attention layers.
-- [ ] **Phase 3: Final Deployment**
-  - [ ] End-to-end model training.
-  - [ ] Export final pipeline for inference.
-     
-  Thank you for your time for reading all these
+```text   INPUT: CLINICAL IMAGE & PATIENT METADATA
+                                           │
+         ┌─────────────────────────────────┴─────────────────────────────────┐
+         ▼                                                                   ▼
+ ┌──────────────┐                                                    ┌──────────────┐
+ │ VISION PATH  │                                                    │METADATA PATH │
+ └──────┬───────┘                                                    └──────┬───────┘
+        │                                                                   │
+        ├──► Swin Transformer ──────► Latent Vector (768)  ──► LayerNorm    ├──► Localization (15 classes)
+        ├──► ConvNeXt-Base   ──────► Latent Vector (1024) ──► LayerNorm    │     └──► Embedding (16)
+        ├──► EfficientNetV2  ──────► Latent Vector (1792) ──► LayerNorm    │
+        ├──► DenseNet        ──────► Latent Vector (1920) ──► LayerNorm    ├──► Sex (3 classes)
+        │                                                                   │     └──► Embedding (8)
+        └──► UNet (ResNet34) ──────► Latent Vector (448)                   │
+              └──► LayerNorm ──► Linear(448→128) ──► Tanh                  └──► Age (Continuous)
+                    └──► Dropout(0.3) ──► [128 Dims]                       │     └──► Z-Score Normalization (1)
+                                │                                           │
+                                ▼                                           ▼
+                       [5504 Vision Dims]                        ┌─────────────────────┐
+                                │                                │  Metadata MLP Block │
+                                │                                │ ─────────────────── │
+                                │                                │  Linear(25 → 128)   │
+                                │                                │  GELU Activation    │
+                                │                                │  LayerNorm Layer    │
+                                │                                └──────────┬──────────┘
+                                │                                           │
+                                │                                           ▼
+                                │                                   [128 Meta Dims]
+                                │                                           │
+                                └───────────────────┬───────────────────────┘
+                                                    │
+                                                    ▼
+                                       ┌─────────────────────────┐
+                                       │  UNIFIED VECTOR SPACE   │
+                                       │ ─────────────────────── │
+                                       │ Concat: 5504 + 128 Dims │
+                                       │   Total: 5760 Tensors   │
+                                       └────────────┬────────────┘
+                                                    │
+                                                    ▼
+                                       ┌─────────────────────────┐
+                                       │ GRANDMASTER FUSION HEAD │
+                                       │ ─────────────────────── │
+                                       │   Linear(5760 → 1024)   │
+                                       │   LayerNorm + GELU      │
+                                       │   Dropout Layer (0.4)   │
+                                       │   Linear(1024 → 256)    │
+                                       │   LayerNorm + GELU      │
+                                       │   Dropout Layer (0.3)   │
+                                       │   Linear(256 → 7)       │
+                                       └────────────┬────────────┘
+                                                    │
+                                                    ▼
+                                       ┌─────────────────────────┐
+                                       │     SOFTMAX OUTPUT      │
+                                       │  7 Skin Cancer Classes  │
+                                       └─────────────────────────┘
